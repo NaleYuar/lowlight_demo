@@ -54,6 +54,11 @@
 ```text
 lowlight_demo/
 │
+├── python_api/
+│   ├── enhance_cli.py  # CLI 推論主程式
+│   ├── model.py        # 模型架構
+│   └── loss.py         # 計算損失
+│ 
 ├── uploads/            # 使用者上傳圖片（ignored）
 ├── outputs/            # 模型輸出圖片（ignored）
 ├── weights/            # 模型權重 (ignored)
@@ -62,12 +67,8 @@ lowlight_demo/
 ├── config.php          # MySQL連線 (ignored)
 ├── delete.php          # 刪除資料
 │
-├── python_api/
-│   ├── enhance_cli.py  # CLI 推論主程式
-│   ├── model.py        # 模型架構
-│   └── loss.py         # 計算損失
-│
-├── README.md
+├── README.md           
+├── requirements.txt    # 環境所需套件
 └── .gitignore
 ```
 ## ⚙️ 運作流程
