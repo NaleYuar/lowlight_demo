@@ -65,7 +65,9 @@ def enhance_one(model, device, in_path, out_path):
 
 def main():
 
-    if len(sys.argv) != 3:
+    print("[DEBUG] argv:", sys.argv)
+
+    if len(sys.argv) < 3:
         print("Usage: python enhance_cli.py input_path output_path")
         sys.exit(1)
 

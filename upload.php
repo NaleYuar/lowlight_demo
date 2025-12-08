@@ -1,75 +1,106 @@
 <?php
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
 
-/**
- * 1. 收使用者上傳的圖片
- * 2. 把檔案存到 uploads/
- * 3. 呼叫 Python 做增亮，輸出到 outputs/
- * 4. 把檔名與增亮後路徑寫進資料庫，最後導回首頁
- */
-
-if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
-    die('上傳失敗，請重新選擇圖片。');
-}
-
-$fileInfo = $_FILES['image'];
-
-
-$originalName = $fileInfo['name'];
-$ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-
-
-$basename      = date('Ymd_His') . '_' . bin2hex(random_bytes(4));
-$savedFilename = $basename . '.' . $ext;
-
-
-$uploadDir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads';
-if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0777, true);
-
-}
-
-$inputPath = $uploadDir . DIRECTORY_SEPARATOR . $savedFilename;
-
-
-if (!move_uploaded_file($fileInfo['tmp_name'], $inputPath)) {
-    die('無法儲存上傳檔案，請確認 uploads 資料夾權限。');
-}
-
-
-$outputDir = __DIR__ . DIRECTORY_SEPARATOR . 'outputs';
-if (!is_dir($outputDir)) {
-    mkdir($outputDir, 0777, true);
-}
-
-$outputName = $basename . '_out.png';
-$outputPath = $outputDir . DIRECTORY_SEPARATOR . $outputName;
-
-$PYTHON_BIN = 'D:\\Anaconda\\envs\\YOLO\\python.exe';
-
-$PY_SCRIPT = __DIR__ . DIRECTORY_SEPARATOR . 'python_api' . DIRECTORY_SEPARATOR . 'enhance_cli.py';
-
-$cmd = '"' . $PYTHON_BIN . '" ' .
-    escapeshellarg($PY_SCRIPT) . ' ' .
-    escapeshellarg($inputPath) . ' ' .
-    escapeshellarg($outputPath);
-
-$log = shell_exec($cmd . ' 2>&1');
-
-if (!file_exists($outputPath)) {
-    echo "增亮失敗，Python log 如下：<pre>" . htmlspecialchars($log) . "</pre>";
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: index.php');
     exit;
 }
 
+if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+    header('Location: index.php?msg=upload_invalid');
+    exit;
+}
+
+$uploadDir = __DIR__ . '/uploads';
+$outputDir = __DIR__ . '/outputs';
+
+if (!is_dir($uploadDir))  mkdir($uploadDir, 0777, true);
+if (!is_dir($outputDir))  mkdir($outputDir, 0777, true);
+
+$origName = $_FILES['image']['name'];       
+$tmpName  = $_FILES['image']['tmp_name'];
+
+$ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+$allowed = ['jpg', 'jpeg', 'png'];
+if (!in_array($ext, $allowed, true)) {
+    header('Location: index.php?msg=upload_invalid');
+    exit;
+}
+
+// 產生「系統儲存檔名」：乾淨 + 不重複
+$basename  = pathinfo($origName, PATHINFO_FILENAME);
+$timestamp = date('Ymd_His');
+$safeBase  = preg_replace('/[^A-Za-z0-9_\-]/', '_', $basename);  // 去掉奇怪字元
+$storedName = $safeBase . '_' . $timestamp . '.' . $ext;         // 存進 stored_name
+
+// 實際路徑
+$origFsPath = $uploadDir . '/' . $storedName;
+$enhFsPath  = $outputDir . '/' . $storedName;
+
+// Web 用相對路徑（給 Docker / <img> src 用）
+$origRelPath = 'uploads/' . $storedName;
+$enhRelPath  = 'outputs/' . $storedName;
+
+if (!move_uploaded_file($tmpName, $origFsPath)) {
+    header('Location: index.php?msg=upload_invalid');
+    exit;
+}
+
+//呼叫 Docker 進行增亮
+$projectRoot = __DIR__;
+
+$dockerEnhCmd = sprintf(
+    'docker run --rm -v %s:/workspace lowlight-python ' .
+    'bash -lc "cd /workspace/python_api && python enhance_cli.py \'../%s\' \'../%s\' 2>&1"',
+    escapeshellarg($projectRoot),
+    str_replace('\\', '/', $origRelPath),
+    str_replace('\\', '/', $enhRelPath)
+);
+
+$enhOutput = shell_exec($dockerEnhCmd);
+
+// 檢查輸出檔是否存在
+if (!file_exists($enhFsPath)) {
+    @unlink($origFsPath);
+    header('Location: index.php?msg=upload_invalid');
+    exit;
+}
+
+// 呼叫 Docker 計算 PSNR / SSIM / L1 
+$dockerMetricsCmd = sprintf(
+    'docker run --rm -v %s:/workspace lowlight-python ' .
+    'bash -lc "cd /workspace/python_api && python metrics_cli.py \'../%s\' \'../%s\' 2>&1"',
+    escapeshellarg($projectRoot),
+    str_replace('\\', '/', $origRelPath),
+    str_replace('\\', '/', $enhRelPath)
+);
+
+$metricsJson = shell_exec($dockerMetricsCmd);
+
+$psnr = $ssim = $l1 = null;
+
+if ($metricsJson) {
+    $m = json_decode($metricsJson, true);
+    if (is_array($m) && empty($m['error'])) {
+        $psnr = isset($m['psnr']) ? (float)$m['psnr'] : null;
+        $ssim = isset($m['ssim']) ? (float)$m['ssim'] : null;
+        $l1   = isset($m['l1'])   ? (float)$m['l1']   : null;
+    }
+}
+
+//寫入資料庫
 $stmt = $pdo->prepare("
-    INSERT INTO images (filename, enhanced_path, created_at)
-    VALUES (?, ?, NOW())
+    INSERT INTO images (orig_name, stored_name, created_at, psnr, ssim, l1)
+    VALUES (:orig_name, :stored_name, NOW(), :psnr, :ssim, :l1)
 ");
 
 $stmt->execute([
-    $savedFilename,
-    'outputs/' . $outputName
+    ':orig_name'   => $origName,
+    ':stored_name' => $storedName,
+    ':psnr'        => $psnr,
+    ':ssim'        => $ssim,
+    ':l1'          => $l1,
 ]);
 
-header("Location: index.php");
+header('Location: index.php?msg=ok');
 exit;
