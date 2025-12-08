@@ -85,6 +85,10 @@ lowlight_demo/
 │   ├── layout_footer.php  # 共用 Header 
 │   └── layout_header      # 共用 Footer 
 │ 
+├── docs/
+│   ├── ui_upload.png   # 展示上傳與增亮頁面
+│   └── ui_metrics.png  # 展示指標統計頁面
+│ 
 ├── index.php           # 主頁:上傳、增亮紀錄
 ├── upload.php          # 上傳 → 呼叫 Docker 增亮 + 指標 → 寫入 DB
 ├── config.php          # MySQL 連線設定
