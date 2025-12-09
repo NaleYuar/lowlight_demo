@@ -1,31 +1,32 @@
 <?php
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
 
-if (!isset($_POST['id'])) {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['id'])) {
     header("Location: index.php?msg=invalid");
     exit;
 }
 
 $id = (int)$_POST['id'];
 
-$stmt = $pdo->prepare("SELECT filename, enhanced_path FROM images WHERE id = ?");
+$stmt = $pdo->prepare("SELECT orig_name, stored_name FROM images WHERE id = ?");
 $stmt->execute([$id]);
-$row = $stmt->fetch();
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$row) {
     header("Location: index.php?msg=notfound");
     exit;
 }
 
-$pathsToDelete = [
-    'uploads/' . $row['filename'],
-    $row['enhanced_path'],
-];
+$pathsToDelete = [];
 
-foreach ($pathsToDelete as $relPath) {
-    $abs = __DIR__ . DIRECTORY_SEPARATOR . $relPath;
-    if (is_file($abs)) {
-        @unlink($abs);
+if (!empty($row['stored_name'])) {
+    $pathsToDelete[] = __DIR__ . '/uploads/' . $row['stored_name'];
+    $pathsToDelete[] = __DIR__ . '/outputs/' . $row['stored_name'];
+}
+
+foreach ($pathsToDelete as $absPath) {
+    if (is_file($absPath)) {
+        @unlink($absPath);
     }
 }
 

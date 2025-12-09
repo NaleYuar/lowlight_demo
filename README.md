@@ -13,9 +13,9 @@
 
 ---
 
-## 🔗 Demo  (尚未上線)
+## 🔗 Demo
 
-👉 http://<your-vm-ip>/lowlight_demo
+### 👉 https://lowlightdemo.me/
 
 ---
 
@@ -81,7 +81,7 @@ lowlight_demo/
 │   ├── model.py        # 模型架構
 │   └── loss.py         # 計算損失
 │ 
-├── view/
+├── View/
 │   ├── layout_footer.php  # 共用 Header 
 │   └── layout_header      # 共用 Footer 
 │ 
