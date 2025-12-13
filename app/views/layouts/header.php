@@ -1,5 +1,12 @@
 <?php
-// 共用 Header
+
+/**
+ * 共用 Header（Layout）
+ * - 網站上方導覽列 + 全站 CSS
+ * - 由各頁面 view include 使用
+ * - 依 $activeTab 決定目前選取狀態（upload/metrics）
+ */
+
 if (!isset($activeTab)) {
     $activeTab = 'upload';
 }
@@ -910,14 +917,14 @@ if (!isset($activeTab)) {
         <div class="nav-right">
             <div class="env-pill">
                 <span class="env-pill-dot"></span>
-                <span>Docker 測試環境</span>
+                <span>Demo 測試環境</span>
             </div>
         </div>
     </div>
     <div class="subnav-wrap">
         <nav class="subnav">
-            <a class="subnav-item<?= $activeTab === 'upload'   ? ' active' : '' ?>" href="index.php">上傳與增亮</a>
-            <a class="subnav-item<?= $activeTab === 'metrics'  ? ' active' : '' ?>" href="metrics.php">指標統計</a>
+            <a class="subnav-item<?= $activeTab === 'upload' ? ' active' : '' ?>" href="index.php">上傳與增亮</a>
+            <a class="subnav-item<?= $activeTab === 'metrics' ? ' active' : '' ?>" href="metrics">指標統計</a>
         </nav>
     </div>
 </div>

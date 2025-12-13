@@ -20,16 +20,19 @@
 ---
 
 ## 📌 Overview  
-本系統用於測試與驗證自己訓練的權重，透過權重進行推論，能檢視在不同低光影像的增亮效果。<br>
-提供 **低光影像增亮（Low-Light Enhancement）** 的全端 Web 系統，整合：
-- PHP（前端與 API）
+本系統採用 MVC（Model – View – Controller）架構進行設計，<br>
+用於測試與驗證自行訓練之低光影像增亮模型權重，<br>
+透過 Web 介面進行推論，觀察模型在不同低光影像上的增亮效果與品質指標。<br><br>
+提供 **低光影像增亮（Low-Light Enhancement）** 的全端 Web 平台，整合：
+- PHP（Web 前端與後端 Controller）
 - Dockerized Python + PyTorch（SCI 模型推論 + 指標計算）
 - MySQL（儲存影像紀錄與 PSNR / SSIM / L1 指標）
-- GCP VM（雲端部署）
+- GCP VM（雲端部署，CPU 推論）<br>
+（考量雲端資源與預算限制，目前 GCP VM 以 CPU 執行模型推論）
 
 ➤ 使用者上傳低光影像後，系統會透過模型自動進行增亮，並計算對應的 PSNR、SSIM 與 L1 指標。<br>
 ➤ 結果會連同影像紀錄一併寫入資料庫，並在頁面下方的增亮紀錄區塊中呈現。<br>
-➤ 由於此系統在GCP VM是用CPU跑深度學習權重進行增亮，因此系統推論會較慢。
+➤ 由於本系統在 GCP VM 是用 CPU 進行深度學習推論，因此系統處理時間較長屬正常現象。
 
 ---
 ## 🖼 UI Preview
@@ -67,61 +70,87 @@
 ## 📁 專案架構
 
 ```text
-lowlight_demo/
+lowlight_demo/ 
 │
-├── uploads/            # 使用者上傳圖片
-├── outputs/            # 模型輸出圖片
-├── weights/            # 模型權重 
-├── db/                 # 資料庫設置檔案
-│   └──schema.sql  
+├── index.php                 # 專案入口，轉導至 public/
+│
+├── public/                   
+│   ├── index.php             # 單一入口 Router（Front Controller）
+│   ├── .htaccess             # URL Rewrite 設定
+│   ├── uploads/              # 使用者上傳的原始影像
+│   └── outputs/              # 增亮後的輸出影像
+│
+├── app/
+│   │
+│   ├── services/
+│   │   ├── DockerCli.php     # 封裝 docker 指令與 OS 路徑差異
+│   │   └── EnhancePipeline.php # 上傳 → 增亮 → 計算指標的流程控制
+│   │
+│   ├── models/
+│   │   └── ImageModel.php    # images 資料表的資料庫操作（上傳 / 刪除 / 分頁 / 統計）
+│   │
+│   ├── views/
+│   │   ├── layouts/
+│   │   │   ├── footer.php    # 共用頁首與導覽列
+│   │   │   └── header.php    # 共用頁尾與 JS
+│   │   │ 
+│   │   ├── pages/
+│   │   │   ├── index.view.php   # 首頁（上傳 + 紀錄列表）
+│   │   │   └── metrics.view.php # 指標統計頁
+│   │   │ 
+│   │   └── partials/
+│   │       └── record_cards.php # 紀錄卡片的 UI 物件
+│   │
+│   ├── controllers/
+│   │   └── ImageController.php  # 接收請求並呼叫 Model / Service
+│   │
+│   └── config/
+│       ├── bootstrap.php        # 系統初始化與 DI 組裝
+│       └── database.php         # PDO 資料庫連線設定
 │
 ├── python_api/
-│   ├── enhance_cli.py  # 增亮 CLI 主程式
-│   ├── metrics_cli.py  # 計算 PSNR / SSIM / L1 的 CLI
-│   ├── model.py        # 模型架構
-│   └── loss.py         # 計算損失
-│ 
-├── View/
-│   ├── layout_footer.php  # 共用 Header 
-│   └── layout_header      # 共用 Footer 
-│ 
-├── docs/
-│   ├── ui_upload.png   # 展示上傳與增亮頁面
-│   └── ui_metrics.png  # 展示指標統計頁面
-│ 
-├── index.php           # 主頁:上傳、增亮紀錄
-├── upload.php          # 上傳 → 呼叫 Docker 增亮 + 指標 → 寫入 DB
-├── config.php          # MySQL 連線設定
-├── delete.php          # 刪除單筆紀錄與對應檔案
-├── metrics.php         # 指標統計頁
-├── export_csv.php      # 匯出所有紀錄為 CSV
+│   ├── metrics_cli.py           # 計算 PSNR / SSIM / L1 的 CLI
+│   ├── enhance_cli.py           # 增亮 CLI 主程式
+│   ├── loss.py                  # 損失函式與 SSIM 計算
+│   └── model.py                 # 模型架構
 │
-├── Dockerfile          # 建立 Docker image     
-├── requirements.txt    # python環境所需套件
-├── README.md         
-└── .gitignore
+├── weights/
+│   └── best.pt                  # 自己訓練完成的最佳模型權重
+│
+├── db/
+│   └── schema.sql               # 資料庫 schema 定義
+│
+├── docker/
+│   ├── Dockerfile               # Python 推論環境 Docker image
+│   └── requirements.txt         # python環境所需套件
+│
+├── .gitignore                   # Git 忽略設定
+│
+└── README.md                    # 專案說明與使用文件
 ```
 ---
 ## ⚙️ 運作流程
 
 ```text
 [Browser]
-    │ 上傳影像
+    │ 上傳低光影像
     ▼
-[PHP: upload.php]
-    │ 儲存檔案至 /uploads
+[PHP Router / ImageController]
+    │ 儲存檔案至 public/uploads
     │ 呼叫 Docker container → enhance_cli.py
     ▼
-[Python Model]
-    │ 增亮影像
-    │ 儲存輸出至 /outputs
+[Python (PyTorch Model)]
+    │ 低光影像增亮
+    │ 儲存輸出至 public/outputs
     ▼
 [PHP Backend]
-    │ 呼叫 Docker → metrics_cli.py 計算 PSNR/SSIM/L1
-    │ 存入MySQL資料庫
+    │ 呼叫 Docker → metrics_cli.py
+    │ 計算 PSNR / SSIM / L1
+    │ 存入 MySQL 資料庫
     ▼
 [Web UI]
-    顯示增亮影像 + 指標 + 功能按鈕（放大/對比/刪除/下載）
+    顯示增亮影像 + 影像品質指標與功能按鈕
+    （放大/對比/刪除/下載）
 ```
 ---
 ## 🗄 資料庫設置 (MySQL)
@@ -161,9 +190,9 @@ docker build -t lowlight-python .
 
 ### 5. 瀏覽器開啟：
 ```
-http://localhost/lowlight_demo/
+http://localhost/lowlight_demo/public/
 ```
 ---
 ## 📝 Future Improvements
-- 功能/UI介面 優化
+- UI / UX 介面優化 
 - 支援批次影像增亮

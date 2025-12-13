@@ -1,5 +1,12 @@
 <?php
-// 共用 Footer + Modals + JS
+
+/**
+ * 共用 Footer（Layout）
+ * - Footer 區塊
+ * - 共用 Modal（圖片預覽、前後對比）
+ * - 共用 JS（上傳檔名顯示、刪除確認、modal/slider 行為）
+ */
+
 ?>
     <footer>
         低光影像增亮 Demo · SCI 監督式 · Docker 部署 · © <?php echo date('Y'); ?>

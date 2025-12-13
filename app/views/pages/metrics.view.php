@@ -1,15 +1,16 @@
 <?php
-require_once __DIR__ . '/config.php';
 
-$totalRecords = (int)$pdo->query("SELECT COUNT(*) FROM images")->fetchColumn();
+/**
+ * 指標統計 View
+ * - 顯示資料庫整體平均 PSNR/SSIM/L1
+ * - 若無資料，顯示 empty state
+ */
 
-$avgAll = $pdo->query("
-    SELECT AVG(psnr) AS psnr_avg, AVG(ssim) AS ssim_avg, AVG(l1) AS l1_avg
-    FROM images
-")->fetch();
+/** @var int $totalRecords */
+/** @var array $avgAll */
+/** @var string $activeTab */
 
-$activeTab = 'metrics';
-include __DIR__ . '/View/layout_header.php';
+include APP_ROOT . '/views/layouts/header.php';
 ?>
 
 <div class="section-title-row">
@@ -29,7 +30,7 @@ include __DIR__ . '/View/layout_header.php';
             <div class="metrics-avg-pill metrics-avg-pill-psnr">
                 <div class="metrics-avg-label">PSNR 平均</div>
                 <div class="metrics-avg-value">
-                    <?php echo $avgAll['psnr_avg'] !== null ? number_format($avgAll['psnr_avg'], 2) : '--'; ?>
+                    <?php echo $avgAll['psnr_avg'] !== null ? number_format((float)$avgAll['psnr_avg'], 2) : '--'; ?>
                     <span class="metrics-avg-unit">dB</span>
                 </div>
             </div>
@@ -37,24 +38,20 @@ include __DIR__ . '/View/layout_header.php';
             <div class="metrics-avg-pill metrics-avg-pill-ssim">
                 <div class="metrics-avg-label">SSIM 平均</div>
                 <div class="metrics-avg-value">
-                    <?php echo $avgAll['ssim_avg'] !== null ? number_format($avgAll['ssim_avg'], 3) : '--'; ?>
+                    <?php echo $avgAll['ssim_avg'] !== null ? number_format((float)$avgAll['ssim_avg'], 3) : '--'; ?>
                 </div>
             </div>
 
             <div class="metrics-avg-pill metrics-avg-pill-l1">
                 <div class="metrics-avg-label">L1 平均</div>
                 <div class="metrics-avg-value">
-                    <?php echo $avgAll['l1_avg'] !== null ? number_format($avgAll['l1_avg'], 5) : '--'; ?>
+                    <?php echo $avgAll['l1_avg'] !== null ? number_format((float)$avgAll['l1_avg'], 5) : '--'; ?>
                 </div>
             </div>
         </div>
 
-        <p class="metrics-avg-note">
-            以上為目前資料庫中所有紀錄的平均值。
-        </p>
+        <p class="metrics-avg-note">以上為目前資料庫中所有紀錄的平均值。</p>
     </section>
-
 <?php endif; ?>
 
-<?php
-include __DIR__ . '/View/layout_footer.php';
+<?php include APP_ROOT . '/views/layouts/footer.php'; ?>

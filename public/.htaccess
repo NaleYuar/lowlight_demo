@@ -1,0 +1,14 @@
+# URL Rewrite：將 /metrics /export /upload /delete 等路徑導到 index.php?r=...
+
+RewriteEngine On
+RewriteBase /lowlight_demo/public/
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^metrics/?$ index.php?r=metrics [QSA,L]
+RewriteRule ^export/?$  index.php?r=export  [QSA,L]
+RewriteRule ^upload/?$  index.php?r=upload  [QSA,L]
+RewriteRule ^delete/?$  index.php?r=delete  [QSA,L]
+RewriteRule ^$ index.php?r=index [QSA,L]
