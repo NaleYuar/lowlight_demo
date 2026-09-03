@@ -1,0 +1,25 @@
+# Runtime images and logs
+public/uploads/*
+public/outputs/*
+!public/uploads/.gitkeep
+!public/outputs/.gitkeep
+!public/uploads/.htaccess
+!public/outputs/.htaccess
+*.log
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# Editor / OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

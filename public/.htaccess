@@ -1,0 +1,17 @@
+Options -Indexes
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^export/?$ index.php?r=export [QSA,L]
+RewriteRule ^upload/?$ index.php?r=upload [QSA,L]
+RewriteRule ^delete/?$ index.php?r=delete [QSA,L]
+RewriteRule ^$ index.php?r=index [QSA,L]
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "same-origin"
+</IfModule>
